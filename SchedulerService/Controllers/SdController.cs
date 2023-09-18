@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.IO;
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace SchedulerService.Controllers
 {
@@ -57,8 +58,36 @@ namespace SchedulerService.Controllers
             }
         }
 
-        [HttpGet("Get")]
-        public IActionResult Get([FromQuery] int group)
+        [HttpGet("StudGet")]
+        public IActionResult StudGet([FromQuery] int group, [FromQuery] int kurs)
+        {
+            //Load Excel file
+            var path = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", $"sh18.09.2023.xls");
+            WorkBook wb = WorkBook.Load(path);
+
+            WorkSheet ws = wb.GetWorkSheet(kurs.ToString());
+
+            var lessons = new List<string>();
+
+            var needCell = ws["B1:BH1"].FirstOrDefault(g => g.Text.Contains(group.ToString()));
+            if (needCell == null)
+            {
+                return BadRequest(group + " не найден");
+            }
+
+            var rowNum = Regex.Match(needCell.Location, @"\d+").Value;
+            var column = Regex.Match(needCell.Location, @"[A-Za-z]+").Value;
+            string startPos = column + "" + rowNum;
+
+            string endPos = column + "" + "16";
+
+            lessons = ws[$"{startPos}:{endPos}"].Where(s => !string.IsNullOrEmpty(s.Text)).Select(c => c.Text).ToList();
+
+            return Ok(lessons);
+        }
+
+        [HttpGet("TeachGet")]
+        public IActionResult TeachGet([FromQuery] string name)
         {
             //Load Excel file
             var path = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", $"sh18.09.2023.xls");
