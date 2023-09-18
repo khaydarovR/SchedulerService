@@ -59,7 +59,7 @@ namespace SchedulerService.Controllers
         }
 
         [HttpGet("StudGet")]
-        public IActionResult StudGet([FromQuery] int group, [FromQuery] int kurs)
+        public IActionResult StudGet([FromQuery] int group, [FromQuery] int kurs, [FromQuery] DayOfWeek day)
         {
             //Load Excel file
             var path = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", $"sh18.09.2023.xls");
