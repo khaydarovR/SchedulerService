@@ -1,6 +1,9 @@
 ﻿using IronXL;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using MVVMapp.App.Models;
+using SchedulerService.Services;
+using System.Data;
 using System.IO;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -59,34 +62,51 @@ namespace SchedulerService.Controllers
         }
 
         [HttpGet("StudGet")]
-        public IActionResult StudGet([FromQuery] int group, [FromQuery] int kurs, [FromQuery] DayOfWeek day)
-        {
-            //Load Excel file
-            var path = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", $"sh18.09.2023.xls");
-            WorkBook wb = WorkBook.Load(path);
+        public IActionResult StudGet([FromQuery] int group, [FromQuery] int kurs, [FromQuery] DayOfWeek day, int? subgroup)
+		{
+			//Load Excel file
+			var path = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", $"sh18.09.2023.xls");
+			WorkBook wb = WorkBook.Load(path);
 
-            WorkSheet ws = wb.GetWorkSheet(kurs.ToString());
+			WorkSheet ws = wb.GetWorkSheet(kurs.ToString());
+			if (ws == null)
+			{
+				return BadRequest(kurs + " курс не найден");
+			}
 
-            var lessons = new List<string>();
+			var lessons = new List<Lesson>();
 
-            var needCell = ws["B1:BH1"].FirstOrDefault(g => g.Text.Contains(group.ToString()));
-            if (needCell == null)
-            {
-                return BadRequest(group + " не найден");
-            }
+			var needCell = ws["B1:BH1"].FirstOrDefault(g => g.Text.Contains(group.ToString()));
+			if (needCell == null)
+			{
+				return BadRequest(group + " группа не найден");
+			}
 
-            var rowNum = Regex.Match(needCell.Location, @"\d+").Value;
-            var column = Regex.Match(needCell.Location, @"[A-Za-z]+").Value;
-            string startPos = column + "" + rowNum;
+			var snake = new Locator(needCell);
+			var delta = 2 + ((int)day - 1) * 15;
+			var startPos = snake.MoveDown(delta).GetNewLocation();
+			var endPos = snake
+				.MoveUp(delta)
+				.MoveDown(delta + 14)
+				.GetNewLocation();
 
-            string endPos = column + "" + "16";
+			lessons = ws[$"{startPos}:{endPos}"].Where(s => !string.IsNullOrEmpty(s.Text)).Select(c => c.Text).ToList();
 
-            lessons = ws[$"{startPos}:{endPos}"].Where(s => !string.IsNullOrEmpty(s.Text)).Select(c => c.Text).ToList();
 
-            return Ok(lessons);
-        }
+			return Ok(lessons);
+		}
 
-        [HttpGet("TeachGet")]
+		private static List<string> FilterSubGroupLab(int? subgroup, List<string> lessons)
+		{
+			if (subgroup != null)
+			{
+				lessons = lessons.Where(l => l.Contains($"гр.{subgroup}")).ToList();
+			}
+
+			return lessons;
+		}
+
+		[HttpGet("TeachGet")]
         public IActionResult TeachGet([FromQuery] string name)
         {
             //Load Excel file
