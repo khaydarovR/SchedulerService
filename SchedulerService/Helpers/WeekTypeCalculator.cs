@@ -1,6 +1,6 @@
 ﻿using MVVMapp.App.Models;
 
-namespace SchedulerService.Services
+namespace SchedulerService.Helpers
 {
     public class WeekTypeCalculator
     {
@@ -20,7 +20,7 @@ namespace SchedulerService.Services
             for (int i = 0; i < weeksPassed; i++)
             {
                 // Переключаемся между верхней и нижней неделями
-                currentWeekType = (currentWeekType == WeekTypeEnum.Вверхняя) ? WeekTypeEnum.Нижняя : WeekTypeEnum.Вверхняя;
+                currentWeekType = currentWeekType == WeekTypeEnum.Вверхняя ? WeekTypeEnum.Нижняя : WeekTypeEnum.Вверхняя;
             }
 
             return currentWeekType;

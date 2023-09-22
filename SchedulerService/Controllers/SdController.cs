@@ -2,11 +2,10 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MVVMapp.App.Models;
-using SchedulerService.Services;
+using SchedulerService.Helpers;
 using System.Data;
-using System.IO;
 using System.Net;
-using System.Text.RegularExpressions;
+using SchedulerService.Helpers;
 
 namespace SchedulerService.Controllers
 {
@@ -14,7 +13,6 @@ namespace SchedulerService.Controllers
     [ApiController]
     public class SdStudController : ControllerBase
     {
-        private readonly WeekTypeEnum WeekTypeFirstSeptember = WeekTypeEnum.Нижняя;
 
         public SdStudController()
         {
@@ -61,11 +59,11 @@ namespace SchedulerService.Controllers
             }
         }
 
-        private IEnumerable<Lesson> GetLessons(string group, int kurs, DateTime day, int? subgroup)
+        private IEnumerable<Lesson> MainParsing(string group, int kurs, DateTime day, int? subgroup)
         {
             var lessons = new List<Lesson>();
             //Load Excel file
-            WorkBook wb = GetWB();
+            WorkBook wb = ParserHelper.GetWB();
 
             WorkSheet ws = wb.GetWorkSheet(kurs.ToString());
 
@@ -85,7 +83,7 @@ namespace SchedulerService.Controllers
                 .GetNewLocation();
 
             var rows = ws[$"{startPos}:{endPos}"].Where(s => !string.IsNullOrEmpty(s.Text)).ToList();
-            var weekTypeInNeedDate = IsNeedWeekType(day);
+            var weekTypeInNeedDate = ParserHelper.IsNeedWeekType(day);
 
             foreach ( var ce in rows )
             {
@@ -107,9 +105,9 @@ namespace SchedulerService.Controllers
                     if (subgroup != null && curentLesson.Name.Contains($"гр.{subgroup}"))
                     {
                         int position = 0;
-                        curentLesson.Name = GetGroupDescription(curentLesson.Name, subgroup!.ToString(), out position);
-                        curentLesson.TeacherName = GetSplitItemFromPos(curentLesson.TeacherName, position);
-                        var kab = GetSplitItemFromPos(info[4], position);
+                        curentLesson.Name = ParserHelper.GetGroupDescription(curentLesson.Name, subgroup!.ToString(), out position);
+                        curentLesson.TeacherName = ParserHelper.GetSplitItemFromPos(curentLesson.TeacherName, position);
+                        var kab = ParserHelper.GetSplitItemFromPos(info[4], position);
                         curentLesson.Locate = info[3] + " " + kab;
 
                         lessons.Add(curentLesson);
@@ -125,23 +123,11 @@ namespace SchedulerService.Controllers
             return lessons;
         }
 
-        private WeekTypeEnum IsNeedWeekType(DateTime date)
-        {
-            var res = WeekTypeCalculator.CalculateWeekType(date, WeekTypeFirstSeptember);
-            return res;
-        }
-
-        private static WorkBook GetWB()
-        {
-            var path = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", $"sh18.09.2023.xls");
-            WorkBook wb = WorkBook.Load(path);
-            return wb;
-        }
 
         [HttpPost("Gen")]
         public IActionResult Get(string group,[FromBody] DateTime date, int? subgroup)
         {
-            int page = FindPage(group);
+            int page = ParserHelper.FindPage(group);
 
             if (page == -1)
             {
@@ -153,7 +139,7 @@ namespace SchedulerService.Controllers
                 return Ok(new List<Lesson>());
             }
 
-            var lessons = GetLessons(group, page, new DateTime(date.Year, date.Month, date.Day), subgroup);
+            var lessons = MainParsing(group, page, new DateTime(date.Year, date.Month, date.Day), subgroup);
 
             if (lessons == null)
             {
@@ -161,57 +147,6 @@ namespace SchedulerService.Controllers
             }
             return Ok(lessons);
         }
-
-        private int FindPage(string group)
-        {
-            Cell needCell;
-            for (int i = 1; i <= 4; i++)
-            {
-                var wb = GetWB();
-                WorkSheet ws = wb.GetWorkSheet(i.ToString());
-                needCell = ws["B1:BH1"].FirstOrDefault(g => g.Text.Contains(group.ToString()));
-                if (needCell != null)
-                {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
-        private static List<string> FilterSubGroupLab(int? subgroup, List<string> lessons)
-		{
-			if (subgroup != null)
-			{
-				lessons = lessons.Where(l => l.Contains($"гр.{subgroup}")).ToList();
-			}
-
-			return lessons;
-		}
-
-        private string GetGroupDescription(string inputString, string subGroup, out int position)
-        {
-            // Разбиваем строку по символу '/'
-            string[] parts = inputString.Split('/');
-
-            if (parts.Length >= 2)
-            {
-                var res = parts.Where(s => s.Contains($"гр.{subGroup}")).First();
-                position = res == parts[0] ? 0: 1;
-                return res;
-            }
-            position = 0;
-            return inputString;
-        }
-
-        private string GetSplitItemFromPos(string inputString, int pos)
-        {
-            // Разбиваем строку по символу '/'
-            if (inputString.Contains('/'))
-            {
-                string[] parts = inputString.Split('/');
-                return parts[pos];
-            }
-            return inputString;
-        }
+    
     }
 }
