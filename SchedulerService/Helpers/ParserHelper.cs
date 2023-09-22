@@ -23,16 +23,25 @@ namespace SchedulerService.Helpers
         public static string GetGroupDescription(string inputString, string subGroup, out int position)
         {
             // Разбиваем строку по символу '/'
-            string[] parts = inputString.Split('/');
-
-            if (parts.Length >= 2)
+            if (inputString.Contains('/'))
             {
-                var res = parts.Where(s => s.Contains($"гр.{subGroup}")).First();
-                position = res == parts[0] ? 0 : 1;
-                return res;
+                string[] parts = inputString.Split('/');
+
+                if (parts.Length >= 2)
+                {
+                    var res = parts.Where(s => s.Contains($"гр.{subGroup}")).First();
+                    position = res == parts[0] ? 0 : 1;
+                    return res;
+                }
+                position = 0;
+                return inputString;
             }
-            position = 0;
-            return inputString;
+            else
+            {
+                position = 0;
+                return inputString;
+            }
+            
         }
 
         public static string GetSplitItemFromPos(string inputString, int pos)

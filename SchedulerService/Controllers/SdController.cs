@@ -94,8 +94,26 @@ namespace SchedulerService.Controllers
                 var info = ws[snake.GetNewLocation() + ":" + snake.MoveRight(8).GetNewLocation()].Select(c => c.Text).ToList();
 
                 curentLesson.Name = info[2];
-                var timeString = info[0].Split(' ')[1];
-                curentLesson.StartTime = DateTime.Parse(timeString);
+                string timeString;
+                try
+                {
+                    timeString = info[0].Split(' ')[1];
+                }
+                catch
+                {
+                    continue;
+                }
+  
+                DateTime res;
+                if(DateTime.TryParse(timeString, out res))
+                {
+                    curentLesson.StartTime = res;
+                }
+                else
+                {
+                    timeString = info[0];
+                    curentLesson.StartTime = DateTime.Parse(timeString);
+                }
                 curentLesson.LessonTypeEnum = info[5] == "лекция" ? LessonTypeEnum.Лекция : LessonTypeEnum.Лабы;
                 curentLesson.TeacherName = info[8];
 
@@ -115,7 +133,7 @@ namespace SchedulerService.Controllers
                     else
                     {
                         curentLesson.Locate = info[3] + " " + info[4];
-                        lessons.Add(curentLesson);
+                        //lessons.Add(curentLesson);
                     }
                 }
             }
