@@ -12,11 +12,11 @@ namespace SchedulerService.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class SdController : ControllerBase
+    public class SdStudController : ControllerBase
     {
-        private readonly HttpClient httpClient;
+        private readonly WeekTypeEnum WeekTypeFirstSeptember = WeekTypeEnum.Нижняя;
 
-        public SdController()
+        public SdStudController()
         {
             
         }
@@ -61,42 +61,124 @@ namespace SchedulerService.Controllers
             }
         }
 
-        [HttpGet("StudGet")]
-        public IActionResult StudGet([FromQuery] int group, [FromQuery] int kurs, [FromQuery] DayOfWeek day, int? subgroup)
-		{
-			//Load Excel file
-			var path = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", $"sh18.09.2023.xls");
-			WorkBook wb = WorkBook.Load(path);
+        private IEnumerable<Lesson> GetLessons(string group, int kurs, DateTime day, int? subgroup)
+        {
+            var lessons = new List<Lesson>();
+            //Load Excel file
+            WorkBook wb = GetWB();
 
-			WorkSheet ws = wb.GetWorkSheet(kurs.ToString());
-			if (ws == null)
-			{
-				return BadRequest(kurs + " курс не найден");
-			}
+            WorkSheet ws = wb.GetWorkSheet(kurs.ToString());
 
-			var lessons = new List<Lesson>();
+            var needCell = ws["B1:BH1"].FirstOrDefault(g => g.Text.Contains(group.ToString()));
 
-			var needCell = ws["B1:BH1"].FirstOrDefault(g => g.Text.Contains(group.ToString()));
-			if (needCell == null)
-			{
-				return BadRequest(group + " группа не найден");
-			}
+            if (needCell == null)
+            {
+                throw new Exception($"Группа {group} не найдена");
+            }
 
-			var snake = new Locator(needCell);
-			var delta = 2 + ((int)day - 1) * 15;
-			var startPos = snake.MoveDown(delta).GetNewLocation();
-			var endPos = snake
-				.MoveUp(delta)
-				.MoveDown(delta + 14)
-				.GetNewLocation();
+            var snake = new Locator(needCell);
+            var delta = 2 + ((int)day.DayOfWeek - 1) * 15;
+            var startPos = snake.MoveDown(delta).GetNewLocation();
+            var endPos = snake
+                .MoveUp(delta)
+                .MoveDown(delta + 14)
+                .GetNewLocation();
 
-			lessons = ws[$"{startPos}:{endPos}"].Where(s => !string.IsNullOrEmpty(s.Text)).Select(c => c.Text).ToList();
+            var rows = ws[$"{startPos}:{endPos}"].Where(s => !string.IsNullOrEmpty(s.Text)).ToList();
+            var weekTypeInNeedDate = IsNeedWeekType(day);
 
+            foreach ( var ce in rows )
+            {
+                snake = new Locator(ce);
+                snake.MoveLeft(2);
 
-			return Ok(lessons);
-		}
+                var curentLesson = new Lesson();
+                var info = ws[snake.GetNewLocation() + ":" + snake.MoveRight(8).GetNewLocation()].Select(c => c.Text).ToList();
 
-		private static List<string> FilterSubGroupLab(int? subgroup, List<string> lessons)
+                curentLesson.Name = info[2];
+                var timeString = info[0].Split(' ')[1];
+                curentLesson.StartTime = DateTime.Parse(timeString);
+                curentLesson.LessonTypeEnum = info[5] == "лекция" ? LessonTypeEnum.Лекция : LessonTypeEnum.Лабы;
+                curentLesson.TeacherName = info[8];
+
+                var needChar = weekTypeInNeedDate == WeekTypeEnum.Вверхняя ? "в" : "н";
+                if (info[1] == needChar)
+                {
+                    if (subgroup != null && curentLesson.Name.Contains($"гр.{subgroup}"))
+                    {
+                        int position = 0;
+                        curentLesson.Name = GetGroupDescription(curentLesson.Name, subgroup!.ToString(), out position);
+                        curentLesson.TeacherName = GetSplitItemFromPos(curentLesson.TeacherName, position);
+                        var kab = GetSplitItemFromPos(info[4], position);
+                        curentLesson.Locate = info[3] + " " + kab;
+
+                        lessons.Add(curentLesson);
+                    }
+                    else
+                    {
+                        curentLesson.Locate = info[3] + " " + info[4];
+                        lessons.Add(curentLesson);
+                    }
+                }
+            }
+
+            return lessons;
+        }
+
+        private WeekTypeEnum IsNeedWeekType(DateTime date)
+        {
+            var res = WeekTypeCalculator.CalculateWeekType(date, WeekTypeFirstSeptember);
+            return res;
+        }
+
+        private static WorkBook GetWB()
+        {
+            var path = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", $"sh18.09.2023.xls");
+            WorkBook wb = WorkBook.Load(path);
+            return wb;
+        }
+
+        [HttpPost("Gen")]
+        public IActionResult Get(string group,[FromBody] DateTime date, int? subgroup)
+        {
+            int page = FindPage(group);
+
+            if (page == -1)
+            {
+                return BadRequest(group +" группа не найдена");
+            }
+
+            if (date.DayOfWeek == DayOfWeek.Sunday)
+            {
+                return Ok(new List<Lesson>());
+            }
+
+            var lessons = GetLessons(group, page, new DateTime(date.Year, date.Month, date.Day), subgroup);
+
+            if (lessons == null)
+            {
+                return BadRequest("Пары не найдены");
+            }
+            return Ok(lessons);
+        }
+
+        private int FindPage(string group)
+        {
+            Cell needCell;
+            for (int i = 1; i <= 4; i++)
+            {
+                var wb = GetWB();
+                WorkSheet ws = wb.GetWorkSheet(i.ToString());
+                needCell = ws["B1:BH1"].FirstOrDefault(g => g.Text.Contains(group.ToString()));
+                if (needCell != null)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        private static List<string> FilterSubGroupLab(int? subgroup, List<string> lessons)
 		{
 			if (subgroup != null)
 			{
@@ -106,27 +188,30 @@ namespace SchedulerService.Controllers
 			return lessons;
 		}
 
-		[HttpGet("TeachGet")]
-        public IActionResult TeachGet([FromQuery] string name)
+        private string GetGroupDescription(string inputString, string subGroup, out int position)
         {
-            //Load Excel file
-            var path = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", $"sh18.09.2023.xls");
-            WorkBook wb = WorkBook.Load(path);
+            // Разбиваем строку по символу '/'
+            string[] parts = inputString.Split('/');
 
-            WorkSheet ws = wb.GetWorkSheet("4");
-
-            var lessons = new List<string>();
-
-            foreach (var cell in ws["AH3:AH16"])
+            if (parts.Length >= 2)
             {
-                if (string.IsNullOrEmpty(cell.Text) == false)
-                {
-                    Console.WriteLine("value is: {0}", cell.Text);
-                    lessons.Add(cell.Text);
-                }
+                var res = parts.Where(s => s.Contains($"гр.{subGroup}")).First();
+                position = res == parts[0] ? 0: 1;
+                return res;
             }
+            position = 0;
+            return inputString;
+        }
 
-            return Ok(lessons);
+        private string GetSplitItemFromPos(string inputString, int pos)
+        {
+            // Разбиваем строку по символу '/'
+            if (inputString.Contains('/'))
+            {
+                string[] parts = inputString.Split('/');
+                return parts[pos];
+            }
+            return inputString;
         }
     }
 }
