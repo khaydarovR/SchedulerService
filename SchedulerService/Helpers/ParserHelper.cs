@@ -5,8 +5,6 @@ namespace SchedulerService.Helpers
 {
     public static class ParserHelper
     {
-        public static WeekTypeEnum WeekTypeFirstSeptember = WeekTypeEnum.Нижняя;
-
         public static WorkBook GetLatestUploadedWB()
         {
             var directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
@@ -35,6 +33,7 @@ namespace SchedulerService.Helpers
 
         public static WeekTypeEnum IsNeedWeekType(DateTime date)
         {
+            var WeekTypeFirstSeptember = System.Environment.GetEnvironmentVariable("WT") == "top" ? WeekTypeEnum.Вверхняя : WeekTypeEnum.Нижняя;
             var res = WeekTypeCalculator.CalculateWeekType(date, WeekTypeFirstSeptember);
             return res;
         }

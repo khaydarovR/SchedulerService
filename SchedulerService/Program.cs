@@ -1,3 +1,5 @@
+using MVVMapp.App.Models;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -24,5 +26,7 @@ app.MapControllers();
 
 var licen = @"IRONSUITE.RAZIL.KHAYKA.MAIL.RU.19894-34FD0E582A-NBHMM-Q2EBLLVD65Q2-AQ63RSXQGAYB-22VWC3EXVUSY-XZH5245AVWNY-Z7P4VXGRYKPM-VNZO2WMFQA4Y-CSVZ3X-TZVA5SISCVGKUA-DEPLOYMENT.TRIAL-4RAMTQ.TRIAL.EXPIRES.18.OCT.2023";
 IronXL.License.LicenseKey = licen;
+
+System.Environment.SetEnvironmentVariable("WT", "down");
 
 app.Run();
