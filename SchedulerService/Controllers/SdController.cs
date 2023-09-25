@@ -19,10 +19,9 @@ namespace SchedulerService.Controllers
             
         }
 
-        [HttpGet("LoadToServ")]
-        public IActionResult LoadToServ()
+        [HttpPost("LoadToServ")]
+        public IActionResult LoadToServ([FromQuery] string url)
         {
-            var url = @"https://kpfu.ru/portal/docs/F_154697384/Raspisanie.uchebnykh.zanyatij.EO.na.osennij.semestr.2023.24.uch.god_2_.xls";
             var type = @"application/vnd.ms-excel";
 
             using (WebClient client = new WebClient())
@@ -63,7 +62,7 @@ namespace SchedulerService.Controllers
         {
             var lessons = new List<Lesson>();
             //Load Excel file
-            WorkBook wb = ParserHelper.GetWB();
+            WorkBook wb = ParserHelper.GetLatestUploadedWB();
 
             WorkSheet ws = wb.GetWorkSheet(kurs.ToString());
 
@@ -84,16 +83,25 @@ namespace SchedulerService.Controllers
 
             var rows = ws[$"{startPos}:{endPos}"].Where(s => !string.IsNullOrEmpty(s.Text)).ToList();
             var weekTypeInNeedDate = ParserHelper.IsNeedWeekType(day);
+            var needChar = weekTypeInNeedDate == WeekTypeEnum.Вверхняя ? "в" : "н";
 
             foreach ( var ce in rows )
             {
+
                 snake = new Locator(ce);
                 snake.MoveLeft(2);
 
                 var curentLesson = new Lesson();
                 var info = ws[snake.GetNewLocation() + ":" + snake.MoveRight(8).GetNewLocation()].Select(c => c.Text).ToList();
 
+               
+                if (needChar != info[1])
+                {
+                    continue;
+                }
+
                 curentLesson.Name = info[2];
+
                 string timeString;
                 try
                 {
@@ -101,7 +109,7 @@ namespace SchedulerService.Controllers
                 }
                 catch
                 {
-                    continue;
+                    timeString = info[1];
                 }
   
                 DateTime res;
@@ -117,7 +125,6 @@ namespace SchedulerService.Controllers
                 curentLesson.LessonTypeEnum = info[5] == "лекция" ? LessonTypeEnum.Лекция : LessonTypeEnum.Лабы;
                 curentLesson.TeacherName = info[8];
 
-                var needChar = weekTypeInNeedDate == WeekTypeEnum.Вверхняя ? "в" : "н";
                 if (info[1] == needChar)
                 {
                     if (subgroup != null && curentLesson.Name.Contains($"гр.{subgroup}"))
@@ -132,8 +139,11 @@ namespace SchedulerService.Controllers
                     }
                     else
                     {
-                        curentLesson.Locate = info[3] + " " + info[4];
-                        //lessons.Add(curentLesson);
+                        if(curentLesson.LessonTypeEnum == LessonTypeEnum.Лекция)
+                        {
+                            curentLesson.Locate = info[3] + " " + info[4];
+                            lessons.Add(curentLesson);
+                        }
                     }
                 }
             }

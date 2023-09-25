@@ -7,10 +7,29 @@ namespace SchedulerService.Helpers
     {
         public static WeekTypeEnum WeekTypeFirstSeptember = WeekTypeEnum.Нижняя;
 
-        public static WorkBook GetWB()
+        public static WorkBook GetLatestUploadedWB()
         {
-            var path = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", $"sh18.09.2023.xls");
-            WorkBook wb = WorkBook.Load(path);
+            var directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
+
+            // Получаем все файлы в папке "Uploads"
+            var files = Directory.GetFiles(directoryPath);
+
+            // Если нет файлов, возвращаем null или бросаем исключение, в зависимости от ваших требований
+
+            if (files.Length == 0)
+            {
+                throw new FileNotFoundException("Нет загруженных файлов в папке.");
+            }
+
+            // Ищем последний файл по дате создания
+            var latestFile = files
+                .Select(filePath => new FileInfo(filePath))
+                .OrderByDescending(fileInfo => fileInfo.CreationTime)
+                .First();
+
+            // Загружаем найденный файл
+            var wb = WorkBook.Load(latestFile.FullName);
+
             return wb;
         }
 
@@ -60,7 +79,7 @@ namespace SchedulerService.Helpers
             Cell needCell;
             for (int i = 1; i <= 4; i++)
             {
-                var wb = GetWB();
+                var wb = GetLatestUploadedWB();
                 WorkSheet ws = wb.GetWorkSheet(i.ToString());
                 needCell = ws["B1:BH1"].FirstOrDefault(g => g.Text.Contains(group.ToString()));
                 if (needCell != null)
