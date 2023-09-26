@@ -95,7 +95,7 @@ namespace SchedulerService.Controllers
                     }
                     else
                     {
-                        if(curentLesson.LessonTypeEnum == LessonTypeEnum.Лекция)
+                        if(curentLesson.LessonTypeEnum == LessonTypeEnum.Лекция || info[2].Contains("гр.") == false)
                         {
                             curentLesson.Locate = info[3] + " " + info[4];
                             lessons.Add(curentLesson);
