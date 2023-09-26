@@ -22,7 +22,7 @@ namespace SchedulerService.Helpers
             // Ищем последний файл по дате создания
             var latestFile = files
                 .Select(filePath => new FileInfo(filePath))
-                .OrderByDescending(fileInfo => fileInfo.CreationTime)
+                .OrderByDescending(fileInfo => fileInfo.LastWriteTime)
                 .First();
 
             // Загружаем найденный файл
