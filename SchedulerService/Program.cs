@@ -17,6 +17,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.UseHttpsRedirection();
 
@@ -28,5 +33,6 @@ var licen = @"IRONSUITE.RAZIL.KHAYKA.MAIL.RU.19894-34FD0E582A-NBHMM-Q2EBLLVD65Q2
 IronXL.License.LicenseKey = licen;
 
 System.Environment.SetEnvironmentVariable("WT", "down");
+app.MapGet("/ping", () => "Pong");
 
 app.Run();
