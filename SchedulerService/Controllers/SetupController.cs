@@ -14,6 +14,7 @@ namespace SchedulerService.Controllers
         public IActionResult LoadToServ([FromQuery] string url)
         {
             var type = @"application/vnd.ms-excel";
+            var fileName = Guid.NewGuid() + ".xlsx";
 
             using (WebClient client = new WebClient())
             {
@@ -21,13 +22,13 @@ namespace SchedulerService.Controllers
                 {
                     byte[] fileData = client.DownloadData(url);
                     var stream = new MemoryStream(fileData);
-                    var file = new FormFile(stream, 0, stream.Length, "sh", "sh.xls");
+                    var file = new FormFile(stream, 0, stream.Length, "sh", fileName);
 
                     // Проверяем, что файл существует и не пустой
                     if (file != null && file.Length > 0)
                     {
                         // Определяем путь сохранения файла
-                        var path = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", $"sh{DateTime.Now.ToShortDateString()}.xls");
+                        var path = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", fileName);
 
                         // Сохраняем файл на сервере
                         using (var stream2 = new FileStream(path, FileMode.Create))
