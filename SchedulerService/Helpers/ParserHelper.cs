@@ -31,6 +31,30 @@ namespace SchedulerService.Helpers
             return wb;
         }
 
+        public static string GetLastChangedFilePath()
+        {
+            var directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
+
+            // Получаем все файлы в папке "Uploads"
+            var files = Directory.GetFiles(directoryPath);
+
+            // Если нет файлов, возвращаем null или бросаем исключение, в зависимости от ваших требований
+
+            if (files.Length == 0)
+            {
+                throw new FileNotFoundException("Нет загруженных файлов в папке.");
+            }
+
+            // Ищем последний файл по дате создания
+            var latestFile = files
+                .Select(filePath => new FileInfo(filePath))
+                .OrderByDescending(fileInfo => fileInfo.LastWriteTime)
+                .First();
+        
+            return latestFile.FullName;
+        }
+        
+
         public static WeekTypeEnum IsNeedWeekType(DateTime date)
         {
             var WeekTypeFirstSeptember = System.Environment.GetEnvironmentVariable("WT") == "top" ? WeekTypeEnum.Вверхняя : WeekTypeEnum.Нижняя;
