@@ -134,14 +134,14 @@ namespace SchedulerService.Controllers
 
 
         [HttpPost("LoadFromClient2")]
-        public IActionResult LoadFromClient2([FromBody] byte[] data)
+        public IActionResult LoadFromClient2([FromBody] string data)
         {
             var fileName = Guid.NewGuid() + ".xlsx";
             var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", fileName);
 
             try
             {
-                System.IO.File.WriteAllBytes(filePath, data);
+                System.IO.File.WriteAllBytes(filePath, Convert.FromBase64String(data));
                 return Content("Файл успешно сохранен.");
             }
             catch (Exception ex)
