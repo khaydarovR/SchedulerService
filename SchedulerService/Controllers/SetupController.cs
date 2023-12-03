@@ -131,5 +131,24 @@ namespace SchedulerService.Controllers
                 }
             }
         }
+
+
+        [HttpPost("LoadFromClient2")]
+        public IActionResult LoadFromClient2([FromBody] byte[] data)
+        {
+            var fileName = Guid.NewGuid() + ".xlsx";
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", fileName);
+
+            try
+            {
+                System.IO.File.WriteAllBytes(filePath, data);
+                return Content("Файл успешно сохранен.");
+            }
+            catch (Exception ex)
+            {
+                return Content("Ошибка при сохранении файла: " + ex.Message);
+            }
+        }
+
     }
 }
